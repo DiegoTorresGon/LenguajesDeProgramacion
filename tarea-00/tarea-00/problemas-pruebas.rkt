@@ -22,13 +22,13 @@
     (check-eqv? (abs 3) 3)
     (check-eqv? (abs -2) 2))
   
-;  (test-case "inclis1"
-;    (check-equal? (inclis1 '(1 2 3)) '(2 3 4)))
+  (test-case "inclis1"
+    (check-equal? (inclis1 '(1 2 3)) '(2 3 4)))
   
-;  (test-case "even?"
-;    (check-equal? (map even? '(1 2 3 4 5 6)) '(#f #t #f #t #f #t)))
+  (test-case "even?"
+    (check-equal? (map even? '(1 2 3 4 5 6)) '(#f #t #f #t #f #t)))
   
-;  (test-case "another-add"
-;    (check-eqv? (another-add 10 5) 15)))
-)
+  (test-case "another-add"
+    (check-eqv? (another-add 10 5) 15)))
+
 (run-tests pruebas 'verbose)

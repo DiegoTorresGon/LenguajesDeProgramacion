@@ -20,12 +20,11 @@
 (define (find-needle ls)
   (define (find-help ls ind)
     (cond 
-      ((empty? ls) -1)
-      ((equal? (car ls) "needle") (+ ind 1))
+      ((null? ls) -1)
+      ((equal? (car ls) 'needle) (+ ind 1))
       (else (find-help (rest ls) (+ ind 1)))))
   (find-help ls -1))
 
-(if (condicion) valor_verdadero valor_negativo)
 ;; 6.
 (define (abs x)
   (if (< x 0) (- x) x))
@@ -37,9 +36,9 @@
 ;; 8.
 (define (even? x)
   (define (even-h x neg)
-  	(cond 
-	  ((= x 0) (not neg))
-	  (else (even-h (- x 1) (not neg)))))
+  	(if (= x 0) 
+	  (not neg)
+	  (even-h (- x 1) (not neg))))
   (even-h x #f))
 
 ;; 9.
