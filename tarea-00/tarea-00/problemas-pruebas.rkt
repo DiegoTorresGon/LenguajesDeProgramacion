@@ -7,6 +7,9 @@
 (define-test-suite pruebas
   (test-case "area-circle"
     (check-eqv? (area-circle 5) 78.5))
+
+  (test-case "area-circle-radious-0"
+	(check-eqv? (area-circle 0) 0))
   
   (test-case "circle-properties"
     (check-within (circle-properties 5) '(78.5 31.4) 0.001))
@@ -24,6 +27,9 @@
   
   (test-case "inclis1"
     (check-equal? (inclis1 '(1 2 3)) '(2 3 4)))
+
+  (test-case "inclis1-empty"
+	     (check-equal? (inclis1 '()) '()))
   
   (test-case "even?"
     (check-equal? (map even? '(1 2 3 4 5 6)) '(#f #t #f #t #f #t)))
