@@ -31,16 +31,22 @@
   (if (< x 0) (- x) x))
 
 ;; 7.
-;(define (inclis1 ls)
-;  ...)
+(define (inclis1 ls)
+  (map (lambda (x) (+ x 1)) ls))
 
 ;; 8.
-;(define (even? x)
-;  ...)
+(define (even? x)
+  (define (even-h x neg)
+  	(cond 
+	  ((= x 0) (not neg))
+	  (else (even-h (- x 1) (not neg)))))
+  (even-h x #f))
 
 ;; 9.
-;(define another-add
-;  (lambda (n m)
-;    ...))
+(define another-add
+  (lambda (n m)
+    (cond
+      ((zero? n) m)
+      (else (add1 (another-add (sub1 n) m))))))
 
 (provide (all-defined-out))
