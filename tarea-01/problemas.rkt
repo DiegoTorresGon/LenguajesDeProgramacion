@@ -99,9 +99,63 @@
     ((< b 0) (- (div-help a (- b) 0)))))
 
 (define (append-map proc ls)
-  (
-
+  (define (append-map-help ls res)
+    (if (null? ls)
+	res
+	(append-map-help (cdr ls) (append res (proc (car ls))))))
+  (append-map-help ls '()))
+  
+(define (set-difference ls exclude)
+  (filter (lambda (x) (= -1 (list-index-ofv x exclude))) ls))
   	
+(define (foldr bin-proc start ls)
+  (define (foldr-help bin-proc start ls-rev)
+    (if (null? ls-rev)
+      	start
+       	(foldr-help bin-proc (bin-proc (car ls-rev) start) (cdr ls-rev))))
+  (foldr-help bin-proc start (reverse ls)))
 
+(define (powerset ls)
+  (cond 
+    ((null? ls) '(()))
+    (else 
+      (let ((pow-cdr (powerset (cdr ls))))
+      (append (map (lambda (x) (cons (car ls) x)) pow-cdr) pow-cdr)))))
+
+(define (cartesian-product a b)
+  (define (cartesian-help a b res)
+    (if (null? a)
+      res
+      (cartesian-help (cdr a) b 
+		(append res (map (lambda (x) (list (car a) x)) b)))))
+  (cartesian-help a b '()))
+ 
+;foldr procedure
+
+(define (insertL-fr x y ls)
+  (foldr (lambda (a res) (if (eqv? a x)
+			     (cons y (cons x res))
+			     (cons z res)))
+	 '() 
+	 ls))
+
+(define (filter-fr pred ls)
+  (foldr (lambda (a res) (if (pred a)
+			     (cons a res)
+			     res))
+	 '()
+	 ls))
+
+(define (map-fr proc ls)
+  (foldr (lambda (a res) (cons (proc a) res)) '() ls))
+
+(define (append-fr a b)
+  (foldr (lambda (x res) (if 
+
+(define (reverse-fr ls)
+  (foldr (lambda (x res) (append res (list x))) '() ls))
+
+(define (binary->natural-fr bin_rev)
+  (foldr (lambda (x res) (
 
 (provide (all-defined-out))
