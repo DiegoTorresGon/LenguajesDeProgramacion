@@ -80,10 +80,11 @@
 
 (define (binary->natural n_rev)
   (define (binary-help n_rev start_place value)
-    (cond
-      ((empty? n_rev) value)
-      ((equal? 1 (car n_rev)) (binary-help (cdr n_rev) (* 2 start_place) (+ value start_place)))
-      (else (binary-help (cdr n_rev) (* 2 start_place) value))))
+    (if (empty? n_rev)
+      value
+      (binary-help (cdr n_rev) 
+			  (* 2 start_place) 
+			  (+ value (* (car n_rev) start_place)))))
   (binary-help n_rev 1 0))
 
 (define (div a b)
@@ -96,7 +97,8 @@
   (cond
     ((and (< a 0) (< b 0)) (div-help (- a) (- b) 0))
     ((< a 0) (- (div-help (- a) b 0)))
-    ((< b 0) (- (div-help a (- b) 0)))))
+    ((< b 0) (- (div-help a (- b) 0)))
+    (else (div-help a b 0))))
 
 (define (append-map proc ls)
   (define (append-map-help ls res)
@@ -122,20 +124,25 @@
       (let ((pow-cdr (powerset (cdr ls))))
       (append (map (lambda (x) (cons (car ls) x)) pow-cdr) pow-cdr)))))
 
-(define (cartesian-product a b)
+(define (cartesian-product ls)
   (define (cartesian-help a b res)
     (if (null? a)
       res
       (cartesian-help (cdr a) b 
 		(append res (map (lambda (x) (list (car a) x)) b)))))
-  (cartesian-help a b '()))
+  (if (null? ls) 
+      '()
+      (foldr 
+	(lambda (x res) (cartesian-help res x '()))
+	(car ls)
+	(cdr ls))))
  
 ;foldr procedure
 
 (define (insertL-fr x y ls)
   (foldr (lambda (a res) (if (eqv? a x)
 			     (cons y (cons x res))
-			     (cons z res)))
+			     (cons a res)))
 	 '() 
 	 ls))
 
@@ -150,12 +157,51 @@
   (foldr (lambda (a res) (cons (proc a) res)) '() ls))
 
 (define (append-fr a b)
-  (foldr (lambda (x res) (if 
+  (foldr (lambda (x res) (cons x res)) b a)) 
 
 (define (reverse-fr ls)
   (foldr (lambda (x res) (append res (list x))) '() ls))
 
 (define (binary->natural-fr bin_rev)
-  (foldr (lambda (x res) (
+  (foldr (lambda (x res) (+ x (* 2 res)))
+	 0 
+	 bin_rev))
+
+(define (set-difference-fr ls exclude)
+  (filter-fr (lambda (x) (= -1 (list-index-ofv x exclude))) ls))
+
+(define (powerset-fr ls)
+  (foldr (lambda (x res) 
+	   (append-fr (map-fr (lambda (z) (cons x z)) res) res))
+	 '(())
+	 ls))
+
+(define snowball 
+  (letrec
+    ((odd-case
+       (lambda (fix-odd)
+	 (lambda (x)
+	   (cond
+	     ((and (exact-integer? x) (positive? x) (odd? x))
+	      (snowball (add1 (* x 3))))
+	     (else (fix-odd x))))))
+     (even-case
+       (lambda (fix-even)
+	 (lambda (x)
+	   (cond
+	     ((and (exact-integer? x) (positive? x) (even? x))
+	      (snowball (/ x 2)))
+	     (else (fix-even x))))))
+     (one-case
+       (lambda (fix-one)
+	 (lambda (x)
+	   (cond
+	     ((zero? (sub1 x)) 1)
+	     (else (fix-one x))))))
+     (base
+       (lambda (x)
+	 (error 'error "Invalid value ~s~n" x))))
+	(one-case (odd-case (even-case base)))))
+  
 
 (provide (all-defined-out))
