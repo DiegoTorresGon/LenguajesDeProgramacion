@@ -203,5 +203,8 @@
 	 (error 'error "Invalid value ~s~n" x))))
 	(one-case (odd-case (even-case base)))))
   
+(define quine ((lambda (x1 x2) (list x1 (list 'quote x2) (list 'quote x2)))                                                                                         
+                 '(lambda (x1 x2) (list x1 (list 'quote x2) (list 'quote x2)))                                                                                        
+                 '(lambda (x1 x2) (list x1 (list 'quote x2) (list 'quote x2)))))
 
 (provide (all-defined-out))
