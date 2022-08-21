@@ -22,15 +22,18 @@
     (check-equal? (remv-1st 'y '(x y z y x))
                   '(x z y x))
     (check-equal? (remv-1st 'z '(a b c))
-                  '(a b c)))
+                  '(a b c))
+    (check-equal? (remv-1st 'x '()) '()))
   
   (test-case "map"
     (check-equal? (map sub1 '(1 2 3 4))
-                  '(0 1 2 3)))
+                  '(0 1 2 3))
+    (check-equal? (map sub1 '()) '()))
   
   (test-case "filter"
     (check-equal? (filter even? '(1 2 3 4 5 6))
-                  '(2 4 6)))
+                  '(2 4 6))
+    (check-equal? (filter even? '()) '()))
   
   (test-case "zip"
     (check-equal? (zip '(1 2 3) '(a b c))
@@ -38,25 +41,34 @@
     (check-equal? (zip '(1 2 3 4 5 6) '(a b c))
                   '((1 . a) (2 . b) (3 . c)))
     (check-equal? (zip '(1 2 3) '(a b c d e f))
-                  '((1 . a) (2 . b) (3 . c))))
+                  '((1 . a) (2 . b) (3 . c)))
+    (check-equal? (zip '(1 2 3) '()) '())
+    (check-equal? (zip '() '(1 2 3)) '()))
   
   (test-case "list-index-ofv"
     (check-eqv? (list-index-ofv 'x '(x y z x x)) 0)
-    (check-eqv? (list-index-ofv 'x '(y z x x)) 2))
+    (check-eqv? (list-index-ofv 'x '(y z x x)) 2)
+    (check-eqv? (list-index-ofv 'x '(a b c)) -1)
+    (check-eqv? (list-index-ofv 'x '()) -1)) 
   
   (test-case "append"
     (check-equal? (append '(42 120) '(1 2 3))
                   '(42 120 1 2 3))
     (check-equal? (append '(a b c) '(cat dog))
-                  '(a b c cat dog)))
+                  '(a b c cat dog))
+    (check-equal? (append '(a b c) '()) '(a b c))
+    (check-equal? (append '() '(a b c)) '(a b c)))
   
   (test-case "reverse"
     (check-equal? (reverse '(a 3 x))
-                  '(x 3 a)))
+                  '(x 3 a))
+    (check-equal? (reverse '()) '()))
   
   (test-case "repeat"
     (check-equal? (repeat '(4 8 11) 4)
-                  '(4 8 11 4 8 11 4 8 11 4 8 11)))
+                  '(4 8 11 4 8 11 4 8 11 4 8 11))
+    (check-equal? (repeat '(a) 0) '())
+    (check-equal? (repeat '() 3) '()))
   
   (test-case "same-lists*"
     (check-true (same-lists* '() '()))
