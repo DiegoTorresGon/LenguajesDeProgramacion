@@ -2,6 +2,9 @@
 *.ss#*
 .#*.ss
 
+tarea-01.pdf
+tarea-02.pdf
+
 *.scm~
 *.scm#*
 .#*.scm
