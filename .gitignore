@@ -4,6 +4,11 @@
 
 tarea-01.pdf
 tarea-02.pdf
+tarea-00.pdf
+
+*.aux
+*.log
+*.pdf
 
 *.scm~
 *.scm#*
