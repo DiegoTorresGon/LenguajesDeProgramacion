@@ -13,7 +13,13 @@
 		(check-equal? (bundle '("a" "b" "c" "d") 7)
 					  '("abcd"))
 		(check-equal? (bundle '() 3)
-					 '())))
+					 '()))
+
+	(test-case "partition"
+		(check-equal? (partition "abcd" 2)
+					 (bundle (explode "abcd") 2))
+		(check-equal? (partition "abcd" 3)
+					  '("abc" "d"))))
 
 (run-tests pruebas 'verbose)
 

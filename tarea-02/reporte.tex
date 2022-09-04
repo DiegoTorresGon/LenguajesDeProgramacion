@@ -1,0 +1,26 @@
+\documentclass[12pt]{article}
+
+\usepackage[shortlabels]{enumitem}
+
+\begin{document}
+
+\title{Reporte de segunda tarea de Lenguajes de Programaci\'on}
+\author{Diego Torres G.}
+\date{\today}
+
+\maketitle
+
+\begin{enumerate}
+\setcounter{enumi}{4}
+
+		\item{La llamada (bundle '("a" "b" "c") 0) es un buen uso de bundle? ¿qu\'e produce? ¿por qu\'e?}\\\\
+				De acuerdo a la definici\'on que usa los procedimientos "take" y "drop", usar $n = 0$, har\'ia que el procedimiento se cicle ya que en cada ocasi\'on se
+				har\'ia una llamada recursiva a bundle con los mismos argumentos.\\
+
+				Estar\'ias creando una lista infinita con todos sus elementos siendo listas vac\'ias.\\
+
+				En la implementaci\'on que hay en esta tarea, bundle tira un error con $n = 0$.\\
+\end{enumerate}
+
+
+\end{document}

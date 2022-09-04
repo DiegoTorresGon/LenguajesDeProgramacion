@@ -57,4 +57,15 @@
 	  (cons (implode (take s n))
 			(bundle (drop s n) n))]))
 
+;(define (list->chunks l n)
+  
+(define (partition s n)
+  (unless (and (string? s) (integer? n)
+			   (> n 0))
+	(error "s o n inválidos"))
+  (cond 
+	[(= (string-length s) 0) '()]
+	[(< (string-length s) n) (cons s '())]
+	[else (cons (substring s 0 n) (partition (substring s n) n))]))
+
 (provide (all-defined-out))
