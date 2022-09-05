@@ -57,7 +57,10 @@
 	  (cons (implode (take s n))
 			(bundle (drop s n) n))]))
 
-;(define (list->chunks l n)
+(define (list->chunks l n)
+  (if (null? l) 
+	'()
+	(cons (take l n) (list->chunks (drop l n) n)))) 
   
 (define (partition s n)
   (unless (and (string? s) (integer? n)
@@ -67,5 +70,62 @@
 	[(= (string-length s) 0) '()]
 	[(< (string-length s) n) (cons s '())]
 	[else (cons (substring s 0 n) (partition (substring s n) n))]))
+
+
+(define (isort ls comp)
+  (define (insert n ls cmp)
+	(cond
+	  [(null? ls) (list n)]
+	  [(cmp n (car ls)) (cons n ls)]
+	  [else (cons (car ls) (insert n (cdr ls) cmp))]))
+  (if (null? ls)
+	'()
+	(insert (car ls)
+			(isort (rest ls) comp) 
+			comp)))
+
+(define (quicksort ls comp)
+  (define (smallers ls piv)
+	(filter (lambda (x) (comp x piv)) ls))
+  (define (larger-or-eq ls piv)
+	(filter (lambda (x) (not (comp x piv))) ls))
+  (cond 
+	[(null? ls) '()]
+	[else
+	  (define piv (car ls))
+	  (append (quicksort (smallers (cdr ls) piv) comp)
+			  (list piv)
+			  (quicksort (larger-or-eq (cdr ls) piv) comp))]))
+
+(define (find-time-switch n)
+  (define (rand-list elms n)
+	(if (= n 0)
+	  '()
+	  (cons (random elms) (rand-list elms (- n 1)))))
+  (let ([ls (rand-list n n)])
+	(let ([q-time (second (call-with-values 
+					(thunk (time-apply 
+							 (lambda (l) (quicksort l <)) (list ls))) list))]
+		  [i-time (second (call-with-values 
+					(thunk (time-apply 
+							 (lambda (l) (isort l <)) (list ls))) list))])
+  	(if (> i-time q-time)
+	  n
+	  (find-time-switch (+ n 1))))))
+
+(define (timing-trials-expct-val n)
+  (define (timing-help n)
+  	(if (= n 0)
+	  0
+	  (+ (find-time-switch 630) (timing-help (- n 1)))))
+  (round (/ (timing-help n) n)))
+
+(define threshold-quicksort (timing-trials-expct-val 200))
+
+(define (quicksort-opt ls cmp)
+  (if (< (length ls) threshold-quicksort)
+	(isort ls cmp)
+	(quicksort ls cmp)))
+
 
 (provide (all-defined-out))
