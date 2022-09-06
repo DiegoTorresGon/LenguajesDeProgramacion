@@ -61,6 +61,49 @@
 				elementos. Emp\'iricamente, observe que esta variable aleatoria no ten\'ia mucha desviaci\'on y me conform\'e con este n\'umero de experiementos.
 				Adem\'as el tiempo que le tom\'o a mi computadora hacer este c\'alculo ya era bastante grande.\\
 
+\setcounter{enumi}{16}
+		\item{Modifica bundle para verificar que su entrada permita la terminación y que señale un error en caso contrario.}\\
+				Bundle lanza un error en caso de que n sea negativo o cero. Esto nos asegura que en cada paso estamos resolviendo bundle con una lista
+				m\'as peque\~na ya que estamos eliminando al menos un elemento en cada paso.
+
+		\item{Considera la siguiente definición de smallers, uno de los procedimientos utilizados en quicksort, responde en qué puede fallar al 
+				utilizar esta versión modificada en el procedimiento de ordenamiento.}\\
+				
+				Si la lista tiene elementos y el primero de ellos es mayor que el pivote, el procedimiento nunca termina porque se llama recursivamente a la
+				funci\'on con los mismos argumentos.
+
+		\item{Describe con tus propias palabras cómo funciona find-largest-divisor de gcd-structural. Responde por qué comienza desde (min n m).}\\
+				Empieza con (min n m) porque todos los divisores de un n\'umero son menores o iguales que el n\'umero, dado que buscamos un divisor
+				de n y m, el divisor no puede ser mayor que ninguno de los dos.\\
+
+				Funciona checando si k es divisor de n y m y el siguiente caso es con el siguiente menor a k.\\
+
+		\item{Describe con tus propias palabras cómo funciona find-largest-divisor de gcd-generative.}\\
+				Se usa la propiedad de que (gcd l s) := (gcd s (remainder l s)). En cada caso (remainder l s) es menor que s por definici\'on. Reducimos los
+				argumentos hasta llegar al caso base (= min 0), donde en el paso anterior el min, que ahora es el max,  era divisor del max anterior.\\
+
+		\item{Utiliza la función time para determinar cuál de las dos implementaciones es más eficiente, escribiendo tu respuesta con los tiempos de ejecución 
+				obtenidos con ambos procedimientos para valores “pequeños”, “medianos” y “grandes”. Justifica qué valores usaste en cada una de estas 
+				mediciones y por qué los consideraste de ese “tamaño”.}\\
+
+				De acuerdo a la funci\'on time, el procedimiento 'gcd-generative siempre es m\'as r\'apido, sin importar el tama\~no de las entradas. 
+				Prob\'e entradas de dos digitos y la funci\'on a\'un no hac\'ia una medici\'on suficientemente precisa. Luego en los decenas de miles y 
+				'gcd-generative fue m\'as r\'apido. Luego en las decenas de cientos de millones y 'gcd-generative termin\'o mientras que el estructural
+				estaba tardando m\'as de lo que estaba dispuesto a esperar.\\
+
+				Tambi\'en, se puede ver que 'gcd-structural tiene complejidad lineal en tiempo respecto a (min n m) y la de 'gcd-generative es logaritmica
+				en tiempo respecto a (min n m).\\
+
+		\item{Piensa y describe por qué no siempre es la mejor opción elegir el procedimiento más eficiente en tiempo de ejecución. Utiliza criterios que no 
+				sean el de “eficiencia”.}\\
+
+				\begin{itemize}
+						\item{Legibilidad: Uno de los objetivos principales del c\'odigo es ser le\'ido por otras personas. Un pedazo de c\'odigo es mejor si
+								se puede entender su modo de operar m\'as facilmente por un lector humano.}\\
+						\item{Propiedades del algoritmo que implementa. Por ejemplo, hay ciertos algoritmos de ordenaci\'on que tienen la propiedad de estabilidad
+								y, dependiendo del problema, puede ser m\'as importante que tiempo de ordenaci\'on.}\\
+				\end{itemize}
+				
 \end{enumerate}
 
 

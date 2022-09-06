@@ -27,6 +27,17 @@
 		(check-equal? (list->chunks '() 3)
 					  '()))
 
+	(test-case "bundle-chunks"
+		(check-equal? (bundle-chunks '("a" "b" "c" "d") 2)
+					  '("ab" "cd"))
+		(check-equal? (bundle-chunks '("a" "b" "c" "d") 3)
+					  '("abc" "d"))
+		(check-equal? (bundle-chunks '("a" "b" "c" "d") 7)
+					  '("abcd"))
+		(check-equal? (bundle-chunks '() 3)
+					 '()))
+
+
 	(test-case "partition"
 		(check-equal? (partition "abcd" 2)
 					 (bundle (explode "abcd") 2))
