@@ -182,8 +182,7 @@
   (define (draw-it ctx dx dy)
 	(define prev-pen (send ctx get-pen))
 	(define path (new dc-path%))
-	(send ctx set-pen (new pen% [width width] [color color]))
-	(send path move-to 0 h)
+	(send ctx set-pen (new pen% [width width] [color color])) (send path move-to 0 h)
 	(send path line-to w h)
 	(send path line-to (/ w 2) 0)
 	(send path close)
@@ -191,7 +190,7 @@
 	(send ctx set-pen prev-pen))
 	(dc draw-it w h))
 
-(define
+
 
 (define (sierpinski side)
   (cond [(<= side 4) (triangle side 1 "red")]
