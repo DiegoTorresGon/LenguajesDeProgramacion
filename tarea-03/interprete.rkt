@@ -1,16 +1,119 @@
 #lang plait
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;				INTERP			   ;;;;;;	
+;;;;;;;;;		De ExprC a valores 		   ;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define-type Value
   (numV [n : Number])
   (strV [str : String])
   (idV [id : Symbol])
-  (boolV [b : Boolean]))
+  (boolV [b : Boolean])
+  (funV [arg : Symbol]
+		[body : ExprC]))
 
 (define-type Ops
   (plusO)
   (appendO)
   (numeqO)
   (streqO))
+
+
+(define (eval [str : S-Exp]) : Value
+  (interp (desugar (parse str))))
+
+
+; Definiendo un entorno de que acepte ligamientos de Symbolos a cualquiera de
+; las variantes de Value.
+
+(define-type Binding
+  (binding [id : Symbol]
+		   [value : Value]))
+
+(define empty-env empty)
+
+(define-type-alias Environment (Listof Binding))
+
+(define (extend-env [id : Symbol] [value : Value] [env : Environment]) : Environment
+  (cons (binding id value) env)) 
+
+(define (lookup-id [id : Symbol] [env : Environment]) : Value
+  (cond 
+	([empty? env] (error 'lookup-id (string-append "identificador no está enlazado: " (to-string id))))
+	([eq? id (binding-id (first env))] (binding-value (first env)))
+	(else (lookup-id id (rest env)))))
+
+  (define (interp-num s) : Value
+	(numV (numC-n s)))
+  (define (interp-bool s) : Value
+	(boolV (boolC-b s)))
+  (define (interp-str s) : Value
+	(strV (strC-str s)))
+  (define (interp-id [s : ExprC] [env : Environment]) : Value
+	(lookup-id (idC-id s) env))
+  (define (interp-if [s : ExprC] [env : Environment]) : Value
+	(let ([pred (interp-help (ifC-pred s) env)]) 
+	  (cond
+		([not (boolV? pred)] (if (ifC-bool-if s)
+							   (error 'interp "operación lógica con argumento que no es un valor booleano")
+							   (error 'interp "if tiene un condicional que no es de tipo booleano")))
+		([boolV-b pred] (let ([true-expr (interp-help (ifC-true-expr s) env)])
+						  (if (and (ifC-bool-if s) (not (boolV? true-expr)))
+							(error 'interp "operación lógica con argumento que no es un valor booleano")
+							true-expr)))
+		(else (let ([false-expr (interp-help (ifC-false-expr s) env)])
+				(if (and (ifC-bool-if s) (not (boolV? false-expr)))
+				  (error 'interp "operación lógica con argumento que no es un valor booleano")
+				  false-expr))))))
+  (define (interp-binop [s : ExprC] [env : Environment]) : Value
+	(let ([first (interp-help (binopC-first s) env)] 
+		  [second (interp-help (binopC-second s) env)]
+		  [op (binopC-op s)])
+	  (type-case Ops op
+		[(plusO) (if (and (numV? first) (numV? second))
+				   (numV (+ (numV-n first) (numV-n second)))
+				   (error 'interp "argumento incorrecto para la suma, se requieren número"))]
+		[(appendO) (if (and (strV? first) (strV? second))
+					 (strV (string-append (strV-str first) (strV-str second)))
+					 (error 'interp "argumento incorrecto para la concatenación, se requieren cadenas"))]
+		[(numeqO) (if (and (numV? first) (numV? second))
+					(boolV (= (numV-n first) (numV-n second)))
+					(error 'interp "argumento incorrecto para la igualdad, se requieren números"))]
+		[(streqO) (if (and (strV? first) (strV? second))
+					(boolV (string=? (strV-str first) (strV-str second)))
+					(error 'interp "argumento incorrecto para la igualdad de cadenas"))])))
+  (define (interp-fun [s : ExprC]) : Value
+	(funV (funC-arg s) (funC-body s)))
+  (define (interp-app [s : ExprC] [env : Environment]) : Value
+	(let ([first (interp-help (appC-first s) env)]
+		  [arg (interp-help (appC-second s) env)])
+	  (if (funV? first)
+		(interp-help (funV-body first) (extend-env (funV-arg first) arg env))
+		(error 'interp "Aplicación de valor que no es una función"))))
+  (define (interp-help [s : ExprC] [env : Environment]) : Value
+	(cond  
+	  ([numC? s] (interp-num s))
+	  ([boolC? s] (interp-bool s))
+	  ([strC? s] (interp-str s))
+	  ([idC? s] (interp-id s env))
+	  ([ifC? s] (interp-if s env))
+	  ([binopC? s] (interp-binop s env))
+	  ([funC? s] (interp-fun s))
+	  ([appC? s] (interp-app s env))))
+
+(define (interp [s : ExprC]) : Value
+  (interp-help s empty-env))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;				DESUGAR			   ;;;;;;	
+;;;;;;;;;	Interfaz entre ExprS y ExprC   ;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-type ExprC
   (numC [n : Number])
@@ -19,29 +122,34 @@
   (idC [id : Symbol])
   (ifC [pred : ExprC]
 	   [true-expr : ExprC]
-	   [false-expr : ExprC])
+	   [false-expr : ExprC]
+	   [bool-if : Boolean])
   (binopC [op : Ops]
 		  [first : ExprC]
 		  [second : ExprC])
   (funC [arg : Symbol]
 		[body : ExprC])
-  (appC [first : ExprC]
-		[second : ExprC]))
+  (appC [first : ExprC] [second : ExprC]))
 
 (define (desugar [s : ExprS]) : ExprC
-  (cond
-	([numS? s] (numC (numS-n s)))
-	([boolS? s] (boolC (boolS-b s)))
-	([strS? s] (strC (strS-str s)))
-	([idS? s] (idC (idS-id s)))
-	([ifS? s] (ifC (desugar (ifS-pred s)) (desugar (ifS-true-expr s)) (desugar (ifS-false-expr s))))
-	([andS? s] (ifC (desugar (andS-first s)) (desugar (andS-second s)) (boolC #f)))
-	([orS? s] (ifC (desugar (orS-first s)) (boolC #t) (desugar (orS-second s))))
-	([binopS? s] (binopC (binopS-op s) (desugar (binopS-first s)) (desugar (binopS-second s))))
-	([funS? s] (funC (funS-arg s) (desugar (funS-body s))))
-	([letS? s] (appC (funC (letS-id s) (desugar (letS-body s))) (desugar (letS-val s))))
-	([appS? s] (appC (desugar (appS-first s)) (desugar (appS-second s))))))
+  (type-case ExprS s
+	[(numS n) (numC n)]
+	[(boolS b) (boolC b)]
+	[(strS str) (strC str)]
+	[(idS id) (idC id)]
+	[(ifS pred true-expr false-expr) (ifC (desugar pred) (desugar true-expr) (desugar false-expr) #f)]
+	[(andS first second) (ifC (desugar first) (desugar second) (boolC #f) #t)]
+	[(orS first second) (ifC (desugar first) (boolC #t) (desugar second) #t)]
+	[(binopS op first second) (binopC op (desugar first) (desugar second))]
+	[(funS arg body) (funC arg (desugar body))]
+	[(letS id val body) (appC (funC id (desugar body)) (desugar val))]
+	[(appS first second) (appC (desugar first) (desugar second))]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;		PARSE/ExprS		;;;;;;;;;;;;;;;;;	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-type ExprS
   (numS [n : Number])
@@ -65,10 +173,6 @@
 		[body : ExprS])
   (appS [first : ExprS]
 		[second : ExprS]))
-
-
-;(define (eval [str : S-Exp]) : Value
-;  (interp (desugar (parse str))))
 
 (define (parse [in : S-Exp]) : ExprS
   (cond
@@ -128,8 +232,8 @@
 (define (parse-or in)
   (let ([inlst (s-exp->list in)])
 	(if (equal? (length inlst) 3)
-	  (andS (parse (second inlst)) (parse (third inlst)))
-	  (error 'parse "cantidad incorrecta de argumentos para and"))))
+	  (orS (parse (second inlst)) (parse (third inlst)))
+	  (error 'parse "cantidad incorrecta de argumentos para or"))))
 
 (define (parse-+ in)
   (let ([inlst (s-exp->list in)])
