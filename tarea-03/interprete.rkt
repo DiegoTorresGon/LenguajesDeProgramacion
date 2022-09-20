@@ -13,7 +13,8 @@
   (idV [id : Symbol])
   (boolV [b : Boolean])
   (funV [arg : Symbol]
-		[body : ExprC]))
+		[body : ExprC]
+		[env : Environment]))
 
 (define-type Ops
   (plusO)
@@ -46,12 +47,7 @@
 	([eq? id (binding-id (first env))] (binding-value (first env)))
 	(else (lookup-id id (rest env)))))
 
-(define (check-for-id [id : Symbol] [env : Environment]) : Boolean
-  (cond 
-	([empty? env] (error 'lookup-id (string-append "identificador no está enlazado: " (to-string id))))
-	([eq? id (binding-id (first env))] #t)
-	(else (check-for-id id (rest env)))))
-
+; Empiezan las definiciones del interpretador.
 
 (define (interp-num s) : Value
   (numV (numC-n s)))
@@ -101,30 +97,14 @@
   				(error 'interp "argumento incorrecto para la igualdad de cadenas"))])))
 
 (define (interp-fun [s : ExprC] [env : Environment]) : Value
-  (if (check-unbound-id s env)
-	(funV (funC-arg s) (funC-body s))
-	(error 'interp "identificador no está enlazado")))
-
-(define (check-unbound-id [s : ExprC] env) : Boolean
-  (cond  
-	([numC? s] #t)
-  	([boolC? s] #t)  
-	([strC? s] #t)
-  	([idC? s] (check-for-id (idC-id s) env))
-  	([ifC? s] (and (check-unbound-id (ifC-pred s) env)
-				   (check-unbound-id (ifC-true-expr s) env)
-				   (check-unbound-id (ifC-false-expr s) env)))
-  	([binopC? s] (and (check-unbound-id (binopC-first s) env)
-					  (check-unbound-id (binopC-second s) env)))
-  	([funC? s] (check-unbound-id (funC-body s) (extend-env (funC-arg s) (numV 0) env)))
-  	([appC? s] (and (check-unbound-id (appC-first s) env)
-					(check-unbound-id (appC-second s) env)))))
+  (funV (funC-arg s) (funC-body s) env))
 
 (define (interp-app [s : ExprC] [env : Environment]) : Value
   (let ([first (interp-help (appC-first s) env)]
   	  [arg (interp-help (appC-second s) env)])
     (if (funV? first)
-  	(interp-help (funV-body first) (extend-env (funV-arg first) arg env))
+	  (let ([correct-env (funV-env first)])
+		   (interp-help (funV-body first) (extend-env (funV-arg first) arg correct-env)))
   	(error 'interp "Aplicación de valor que no es una función"))))
 
 (define (interp-help [s : ExprC] [env : Environment]) : Value
@@ -162,7 +142,8 @@
 		  [second : ExprC])
   (funC [arg : Symbol]
 		[body : ExprC])
-  (appC [first : ExprC] [second : ExprC]))
+  (appC [first : ExprC] 
+		[second : ExprC]))
 
 (define (desugar [s : ExprS]) : ExprC
   (type-case ExprS s
