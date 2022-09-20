@@ -46,63 +46,96 @@
 	([eq? id (binding-id (first env))] (binding-value (first env)))
 	(else (lookup-id id (rest env)))))
 
-  (define (interp-num s) : Value
-	(numV (numC-n s)))
-  (define (interp-bool s) : Value
-	(boolV (boolC-b s)))
-  (define (interp-str s) : Value
-	(strV (strC-str s)))
-  (define (interp-id [s : ExprC] [env : Environment]) : Value
-	(lookup-id (idC-id s) env))
-  (define (interp-if [s : ExprC] [env : Environment]) : Value
-	(let ([pred (interp-help (ifC-pred s) env)]) 
-	  (cond
-		([not (boolV? pred)] (if (ifC-bool-if s)
-							   (error 'interp "operación lógica con argumento que no es un valor booleano")
-							   (error 'interp "if tiene un condicional que no es de tipo booleano")))
-		([boolV-b pred] (let ([true-expr (interp-help (ifC-true-expr s) env)])
-						  (if (and (ifC-bool-if s) (not (boolV? true-expr)))
-							(error 'interp "operación lógica con argumento que no es un valor booleano")
-							true-expr)))
-		(else (let ([false-expr (interp-help (ifC-false-expr s) env)])
-				(if (and (ifC-bool-if s) (not (boolV? false-expr)))
-				  (error 'interp "operación lógica con argumento que no es un valor booleano")
-				  false-expr))))))
-  (define (interp-binop [s : ExprC] [env : Environment]) : Value
-	(let ([first (interp-help (binopC-first s) env)] 
-		  [second (interp-help (binopC-second s) env)]
-		  [op (binopC-op s)])
-	  (type-case Ops op
-		[(plusO) (if (and (numV? first) (numV? second))
-				   (numV (+ (numV-n first) (numV-n second)))
-				   (error 'interp "argumento incorrecto para la suma, se requieren número"))]
-		[(appendO) (if (and (strV? first) (strV? second))
-					 (strV (string-append (strV-str first) (strV-str second)))
-					 (error 'interp "argumento incorrecto para la concatenación, se requieren cadenas"))]
-		[(numeqO) (if (and (numV? first) (numV? second))
-					(boolV (= (numV-n first) (numV-n second)))
-					(error 'interp "argumento incorrecto para la igualdad, se requieren números"))]
-		[(streqO) (if (and (strV? first) (strV? second))
-					(boolV (string=? (strV-str first) (strV-str second)))
-					(error 'interp "argumento incorrecto para la igualdad de cadenas"))])))
-  (define (interp-fun [s : ExprC]) : Value
-	(funV (funC-arg s) (funC-body s)))
-  (define (interp-app [s : ExprC] [env : Environment]) : Value
-	(let ([first (interp-help (appC-first s) env)]
-		  [arg (interp-help (appC-second s) env)])
-	  (if (funV? first)
-		(interp-help (funV-body first) (extend-env (funV-arg first) arg env))
-		(error 'interp "Aplicación de valor que no es una función"))))
-  (define (interp-help [s : ExprC] [env : Environment]) : Value
-	(cond  
-	  ([numC? s] (interp-num s))
-	  ([boolC? s] (interp-bool s))
-	  ([strC? s] (interp-str s))
-	  ([idC? s] (interp-id s env))
-	  ([ifC? s] (interp-if s env))
-	  ([binopC? s] (interp-binop s env))
-	  ([funC? s] (interp-fun s))
-	  ([appC? s] (interp-app s env))))
+(define (check-for-id [id : Symbol] [env : Environment]) : Boolean
+  (cond 
+	([empty? env] (error 'lookup-id (string-append "identificador no está enlazado: " (to-string id))))
+	([eq? id (binding-id (first env))] #t)
+	(else (check-for-id id (rest env)))))
+
+
+(define (interp-num s) : Value
+  (numV (numC-n s)))
+
+(define (interp-bool s) : Value
+  (boolV (boolC-b s)))
+
+(define (interp-str s) : Value
+  (strV (strC-str s)))
+
+(define (interp-id [s : ExprC] [env : Environment]) : Value
+  (lookup-id (idC-id s) env))
+
+(define (interp-if [s : ExprC] [env : Environment]) : Value
+  (let ([pred (interp-help (ifC-pred s) env)]) 
+    (cond
+  	([not (boolV? pred)] (if (ifC-bool-if s)
+  						   (error 'interp "operación lógica con argumento que no es un valor booleano")
+  						   (error 'interp "if tiene un condicional que no es de tipo booleano")))
+  	([boolV-b pred] (let ([true-expr (interp-help (ifC-true-expr s) env)])
+  					  (if (and (ifC-bool-if s) (not (boolV? true-expr)))
+  						(error 'interp "operación lógica con argumento que no es un valor booleano")
+  						true-expr)))
+  	(else (let ([false-expr (interp-help (ifC-false-expr s) env)])
+  			(if (and (ifC-bool-if s) (not (boolV? false-expr)))
+  			  (error 'interp "operación lógica con argumento que no es un valor booleano")
+  			  false-expr))))))
+
+(define (interp-binop [s : ExprC] [env : Environment]) : Value
+  (let ([first (interp-help (binopC-first s) env)] 
+  	  [second (interp-help (binopC-second s) env)]
+  	  [op (binopC-op s)])
+    (type-case Ops op
+  	[(plusO) (if (and (numV? first) (numV? second))
+  			   (numV (+ (numV-n first) (numV-n second)))
+  			   (error 'interp (string-append "argumento incorrecto para la suma, se requieren número: "
+											 (string-append (to-string first)
+															(string-append ", y, " (to-string second))))))]
+  	[(appendO) (if (and (strV? first) (strV? second))
+  				 (strV (string-append (strV-str first) (strV-str second)))
+  				 (error 'interp "argumento incorrecto para la concatenación, se requieren cadenas"))]
+  	[(numeqO) (if (and (numV? first) (numV? second))
+  				(boolV (= (numV-n first) (numV-n second)))
+  				(error 'interp "argumento incorrecto para la igualdad, se requieren números"))]
+  	[(streqO) (if (and (strV? first) (strV? second))
+  				(boolV (string=? (strV-str first) (strV-str second)))
+  				(error 'interp "argumento incorrecto para la igualdad de cadenas"))])))
+
+(define (interp-fun [s : ExprC] [env : Environment]) : Value
+  (if (check-unbound-id s env)
+	(funV (funC-arg s) (funC-body s))
+	(error 'interp "identificador no está enlazado")))
+
+(define (check-unbound-id [s : ExprC] env) : Boolean
+  (cond  
+	([numC? s] #t)
+  	([boolC? s] #t)  
+	([strC? s] #t)
+  	([idC? s] (check-for-id (idC-id s) env))
+  	([ifC? s] (and (check-unbound-id (ifC-pred s) env)
+				   (check-unbound-id (ifC-true-expr s) env)
+				   (check-unbound-id (ifC-false-expr s) env)))
+  	([binopC? s] (and (check-unbound-id (binopC-first s) env)
+					  (check-unbound-id (binopC-second s) env)))
+  	([funC? s] (check-unbound-id (funC-body s) (extend-env (funC-arg s) (numV 0) env)))
+  	([appC? s] (and (check-unbound-id (appC-first s) env)
+					(check-unbound-id (appC-second s) env)))))
+
+(define (interp-app [s : ExprC] [env : Environment]) : Value
+  (let ([first (interp-help (appC-first s) env)]
+  	  [arg (interp-help (appC-second s) env)])
+    (if (funV? first)
+  	(interp-help (funV-body first) (extend-env (funV-arg first) arg env))
+  	(error 'interp "Aplicación de valor que no es una función"))))
+
+(define (interp-help [s : ExprC] [env : Environment]) : Value
+  (cond  
+	([numC? s] (interp-num s))
+  	([boolC? s] (interp-bool s))  ([strC? s] (interp-str s))
+  	([idC? s] (interp-id s env))
+  	([ifC? s] (interp-if s env))
+  	([binopC? s] (interp-binop s env))
+  	([funC? s] (interp-fun s env))
+  	([appC? s] (interp-app s env))))
 
 (define (interp [s : ExprC]) : Value
   (interp-help s empty-env))
@@ -204,7 +237,8 @@
 	[(s-exp-match? `{ANY ...} in)
 	 (parse-app in)]
 	[(s-exp-symbol? in)
-	 (parse-id in)]))
+	 (parse-id in)]
+	[else (error 'parse "expresión malformada")]))
 
 (define (parse-number in)
   (numS (s-exp->number in)))
