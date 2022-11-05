@@ -1,0 +1,39 @@
+\documentclass[12pt]{article}
+
+\usepackage[shortlabels]{enumitem}
+
+\begin{document}
+
+\title{Ejercicios PROC}
+\author{Diego Torres Gonzalez}
+\date{\today}
+
+\maketitle
+
+\begin{itemize}
+
+\item[3.20]{In PROC, procedures have only one argument, but one can get the effect of multiple argument procedures by using procedures that return other procedures. 
+For example, one might write code like}
+
+	let f = proc (x) proc (y) ... \\
+	in ((f 3) 4) \\
+
+	This trick is called Currying, and the procedure is said to be Curried. Write a Curried procedure that takes two arguments and returns their sum. 
+	You can write $x + y$ in your language by writing $-(x, -(0, y))$. \\
+
+	La funci\'on quedar\'ia as\'i:\\
+		proc (x) proc (y) $-(x, -(0, y))$
+
+\item[3.27]{Add a new kind of procedure called a traceproc to the language. A traceproc works exactly like a proc, except that it prints a trace message on
+entry and on exit.}
+
+	Expression ::= traceproc (Identifier) Expression \\\\
+	traceproc (symb) expr ::= proc (symb) (print "Enter proc with val: " symb " and body: " expr) expr (print "Exit proc with val: " symb)\\\\
+
+
+
+\end{itemize}
+
+
+\end{document}
+
