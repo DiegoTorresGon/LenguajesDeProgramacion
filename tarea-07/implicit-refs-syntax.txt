@@ -1,0 +1,26 @@
+Sintaxis y AST's de implicit-refs
+
+Program ::= Expression
+			a-program (exp1)
+
+Expression 	::= Number
+				const-exp (num)
+			| 	-(Expression, Expression)
+				diff-exp (exp1 exp2)
+			|	zero? (Expression)
+				zero?-exp (exp1)
+			|	if Expression then Expression else Expression
+				if-exp (exp1 exp2 exp3)
+			| 	Identifier
+				var-exp (var)
+			|	let Identifier = Expression in Expression
+				let-exp (var exp1 body)
+			|	letrec Identifier (Identifier) = Expression in Expression
+				letrec-exp (p-name b-var p-body letrec-body)
+			| 	set Identifier = Expression
+				set-exp (var exp1)
+			| 	(Expression Expression)
+				call-exp (exp1 exp2)
+
+
+
