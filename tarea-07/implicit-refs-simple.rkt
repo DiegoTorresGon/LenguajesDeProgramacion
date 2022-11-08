@@ -4,7 +4,7 @@
 
 (struct Program () #:transparent)
 
-(struct a-program Program (stmnt) #:transparent)
+(struct a-program Program (exp1) #:transparent)
 
 (struct Expression () #:transparent)
 
@@ -18,20 +18,11 @@
 (struct set-exp Expression (var exp1) #:transparent)
 (struct call-exp Expression (exp1 exp2) #:transparent)
 
-(struct Statement () #:transparent)
-
-(struct assign-st Statement (var exp1) #:transparent)
-(struct print-st Statement (exp1) #:transparent)
-(struct seq-st Statement (stmntlist) #:transparent)
-(struct if-st Statement (exp1 stmnt1 stmnt2) #:transparent)
-(struct while-st Statement (exp1 stmnt1) #:transparent)
-(struct var-st Statement (idlist stmnt1) #:transparent)
-
 (struct Value () #:transparent)
 
 (struct int-val Value (n) #:transparent)
 (struct bool-val Value (b) #:transparent)
-(struct proc-val Value (id body env) #:transparent)
+(struct proc-val Value (id body env))
 
 
 (struct binding (id value)) ; Environment is a listof binding
@@ -73,7 +64,7 @@
 	  (letrec ((setref-inner
 				 (lambda (store1 ref1)
 				   (cond
-					 ((null? store1) (error 'setref! "Referencia inválida ref: ~a en ~a" ref global-store))
+					 ((null? store1) (report-invalid-reference ref gloal-store))
 					 ((zero? ref1) (cons val (cdr global-store)))
 					 (else (cons (car store1) (setref-inner (cdr store1)
 															(- ref1 1))))))))
@@ -148,88 +139,21 @@
     ([set-exp? exp1] (interp-set-exp exp1 env))
     ([call-exp? exp1] (interp-call-exp exp1 env))))
 
-(define (interp-assign-st stmnt env)
-  (let ((assign (interp-exp (set-exp (assign-st-var stmnt) (assign-st-exp1 stmnt)) env)))
-	(void)))
-
-(define (interp-print-st stmnt env)
-  (displayln (interp-exp (print-st-exp1 stmnt) env)))
-
-(define (interp-seq-st stmnt env)
-  (let ((stmnt-list (seq-st-stmntlist stmnt)))
-	(if (empty? stmnt-list)
-	  (error 'interp "seq-st vacío")
-  	  (if (empty? (cdr stmnt-list))
-		(interp-stmnt (car stmnt-list) env)
-		(let ((first-stmnt (car stmnt-list)))
-		  (interp-stmnt first-stmnt env)
-  		  (interp-stmnt (seq-st (cdr stmnt-list)) env))))))
-
-(define (interp-if-st stmnt env)
-  (let ((val1 (interp-exp (if-st-exp1 stmnt) env)))
-	(if (bool-val? val1)
-	  (if (bool-val-b val1)
-		(interp-stmnt (if-st-stmnt1 stmnt) env)
-		(interp-stmnt (if-st-stmnt2 stmnt) env))
-	  (error 'interp "first argument in if is not bool ~a" val1))))
-
-(define (interp-while-st stmnt env)
-  (let ((val1 (interp-exp (while-st-exp1 stmnt) env)))
-	(if (bool-val? val1)
-	  (if (bool-val-b val1)
-		(interp-stmnt (while-st-stmnt1 stmnt) env)
-		(void))
-	  (error 'interp "first argument in while is not bool ~a" val1))))
-
-(define (interp-var-st stmnt env)
-  (let ((new-env (extend-env
-				   (if (empty? (var-st-idlist stmnt))
-					 (error 'interp "var-st con idlist vacía")
-					 (first (var-st-idlist stmnt)))
-				   (newref 'uninitialized)
-				   env)))
-	(if (empty? (cdr (var-st-idlist stmnt)))
-	  (interp-stmnt (var-st-stmnt1 stmnt) new-env)
-	  (interp-stmnt (var-st (cdr (var-st-idlist stmnt)) 
-							(var-st-stmnt1 stmnt)) 
-					new-env))))
-
-(define (interp-stmnt stmnt env)
-  (cond
-    ([assign-st? stmnt] (interp-assign-st stmnt env))
-    ([print-st? stmnt] (interp-print-st stmnt env))
-    ([seq-st? stmnt] (interp-seq-st stmnt env))
-    ([if-st? stmnt] (interp-if-st stmnt env))
-    ([while-st? stmnt] (interp-while-st stmnt env))
-    ([var-st? stmnt] (interp-var-st stmnt env))
-    (else (error 'interp "estructura indefinida ~a" stmnt))))
-
 (define (interp program)
   (init-store!)
-  (interp-stmnt (a-program-stmnt program) empty-env))
+  (interp-exp (a-program-exp1 program) empty-env))
 
-;; Simple test of the extension of the language.
 
-(interp (a-program (var-st (list 'x 'z) 
-						   (seq-st (list
-									 (assign-st 'x (const-exp 10))
-									 (assign-st 'z
-												(letrec-exp 'f 'y
-													(if-exp
-													  (zero?-exp (var-exp 'y))
-													  (const-exp 0)
-													  (diff-exp 
-														(var-exp 'y)
-														(diff-exp
-														  (const-exp 0)
-														  (call-exp 
-															(var-exp 'f)
-															(diff-exp
-															(var-exp 'y)
-															(const-exp 1))))))
-													(call-exp
-													  (var-exp 'f)
-													  (var-exp 'x))))
-									 (print-st (var-exp 'z)))))))
+;;Simple recursive function test.
+
+(interp (a-program (letrec-exp 'f 'x (if-exp (zero?-exp (var-exp 'x))
+											 (const-exp 0)
+											 (diff-exp (call-exp (var-exp 'f)
+																 (diff-exp (var-exp 'x)
+																		   (const-exp 1)))
+													   (diff-exp (const-exp 0)
+																 (var-exp 'x))))
+							   (call-exp (var-exp 'f) (const-exp 10)))))
+
 
 
