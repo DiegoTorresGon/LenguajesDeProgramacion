@@ -22,16 +22,16 @@
 
 (struct assign-st Statement (var exp1) #:transparent)
 (struct print-st Statement (exp1) #:transparent)
-(struct seq-st Statement (explist) #:transparent)
+(struct seq-st Statement (stmntlist) #:transparent)
 (struct if-st Statement (exp1 stmnt1 stmnt2) #:transparent)
-(struct while-st Statement (exp1 stmnt1))
-(struct var-st Statement (idlist stmnt1))
+(struct while-st Statement (exp1 stmnt1) #:transparent)
+(struct var-st Statement (idlist stmnt1) #:transparent)
 
 (struct Value () #:transparent)
 
 (struct int-val Value (n) #:transparent)
 (struct bool-val Value (b) #:transparent)
-(struct proc-val Value (id body env))
+(struct proc-val Value (id body env) #:transparent)
 
 
 (struct binding (id value)) ; Environment is a listof binding
@@ -73,7 +73,7 @@
 	  (letrec ((setref-inner
 				 (lambda (store1 ref1)
 				   (cond
-					 ((null? store1) (report-invalid-reference ref gloal-store))
+					 ((null? store1) (error 'setref! "Referencia inválida ref: ~a en ~a" ref global-store))
 					 ((zero? ref1) (cons val (cdr global-store)))
 					 (else (cons (car store1) (setref-inner (cdr store1)
 															(- ref1 1))))))))
@@ -109,7 +109,7 @@
 													   (letrec-exp-p-body exp1)
 													   new-env))
 							(interp-exp (letrec-exp-letrec-body exp1) new-env)))
-	  ([set-exp? exp1] (let ((var-ref (lookup-id (set-exp-var exp1)))
+	  ([set-exp? exp1] (let ((var-ref (lookup-id (set-exp-var exp1) env))
 							 (new-val (interp-exp (set-exp-exp1 exp1) env)))
 						 (setref! var-ref new-val)))
 	  ([call-exp? exp1] (let ((val1 (interp-exp (call-exp-exp1 exp1) env))
@@ -122,22 +122,45 @@
 							  ;(print (int-val-n val2))
 							  (interp-exp proc-body proc-env))
 							(error 'interp "Primer argumento no es función ~a" val1))))))
+  (define (interp-stmnt stmnt env)
+	(cond
+	  ([assign-st? stmnt] (let ((assign (interp-exp (set-exp (assign-st-var stmnt) (assign-st-exp1 stmnt)) env)))
+							(void)))
+	  ([print-st? stmnt] (displayln (interp-exp (print-st-exp1 stmnt) env)))
+	  ([seq-st? stmnt] (let ((stmnt-list (seq-st-stmntlist stmnt)))
+						 (if (empty? stmnt-list)
+						   (error 'interp "seq-st vacío")
+						   (if (empty? (cdr stmnt-list))
+							 (interp-stmnt (car stmnt-list) env)
+							 (let ((first-stmnt (car stmnt-list)))
+							   (interp-stmnt first-stmnt env)
+							   (interp-stmnt (seq-st (cdr stmnt-list)) env))))))
+	  ([if-st? stmnt] (let ((val1 (interp-exp (if-st-exp1 stmnt) env)))
+						(if (bool-val? val1)
+						  (if (bool-val-b val1)
+							(interp-stmnt (if-st-stmnt1 stmnt) env)
+							(interp-stmnt (if-st-stmnt2 stmnt) env))
+						  (error 'interp "first argument in if is not bool ~a" val1))))
+	  ([while-st? stmnt] (let ((val1 (interp-exp (while-st-exp1 stmnt) env)))
+						   (if (bool-val? val1)
+							 (if (bool-val-b val1)
+							   (interp-stmnt (while-st-stmnt1 stmnt) env)
+							   (void))
+							 (error 'interp "first argument in while is not bool ~a" val1))))
+	  ([var-st? stmnt] (let ((new-env (extend-env
+									   (if (empty? (var-st-idlist stmnt))
+										 (error 'interp "var-st con idlist vacía")
+										 (first (var-st-idlist stmnt)))
+									   (newref 'uninitialized)
+									   env)))
+						 (if (empty? (cdr (var-st-idlist stmnt)))
+						   (interp-stmnt (var-st-stmnt1 stmnt) new-env)
+						   (interp-stmnt (var-st (cdr (var-st-idlist stmnt)) 
+												 (var-st-stmnt1 stmnt)) 
+										 new-env))))
+	  (else (error 'interp "estructura indefinida ~a" stmnt))))
   (init-store!)
-  (interp-exp (a-program-exp1 program) empty-env))
-
-;;Simple recursive test function
-(interp (a-program (letrec-exp 'f 'x (if-exp (zero?-exp (var-exp 'x))
-											 (const-exp 0)
-											 (diff-exp (call-exp (var-exp 'f)
-																 (diff-exp (var-exp 'x)
-																		   (const-exp 1)))
-													   (diff-exp (const-exp 0)
-																 (var-exp 'x))))
-							   (call-exp (var-exp 'f) (const-exp 10)))))
-;;;;;
-
-
-
+  (interp-stmnt (a-program-stmnt program) empty-env))
 
 
 

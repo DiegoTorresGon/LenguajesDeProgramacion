@@ -100,7 +100,7 @@
 													   (letrec-exp-p-body exp1)
 													   new-env))
 							(interp-exp (letrec-exp-letrec-body exp1) new-env)))
-	  ([set-exp? exp1] (let ((var-ref (lookup-id (set-exp-var exp1)))
+	  ([set-exp? exp1] (let ((var-ref (lookup-id (set-exp-var exp1) env))
 							 (new-val (interp-exp (set-exp-exp1 exp1) env)))
 						 (setref! var-ref new-val)))
 	  ([call-exp? exp1] (let ((val1 (interp-exp (call-exp-exp1 exp1) env))
