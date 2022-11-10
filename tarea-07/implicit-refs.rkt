@@ -1,6 +1,6 @@
-#lang racket/base
+#lang racket
 
-//IMPLICIT-REFS
+;;IMPLICIT-REFS
 
 (struct Program () #:transparent)
 
@@ -17,6 +17,8 @@
 (struct letrec-exp Expression (p-name b-var p-body letrec-body) #:transparent)
 (struct set-exp Expression (var exp1) #:transparent)
 (struct call-exp Expression (exp1 exp2) #:transparent)
+(struct seq-exp Expression (explist) #:transparent)
+(struct proc-exp Expression (b-var p-body) #:transparent)
 
 (struct Statement () #:transparent)
 
@@ -34,9 +36,9 @@
 (struct proc-val Value (id body env) #:transparent)
 
 
-(struct binding (id value)) ; Environment is a listof binding
+(struct binding (id value) #:transparent) ; Environment is a listof binding
 
-(define empty-env empty)
+(define empty-env '())
 
 (define (extend-env id value env)  
   (cons (binding id value) env)) 
@@ -51,7 +53,7 @@
 
 (define global-store 'uninitialized)
 
-(define empty-store (lambda () '()))
+(define empty-store (lambda () empty))
 
 (define get-store (lambda () global-store))
 
@@ -62,6 +64,8 @@
 				   (set! global-store (append global-store (list val)))
 				   next-ref)))
 
+(define reference? integer?)
+
 (define deref
   (lambda (ref)
 	(list-ref global-store ref)))
@@ -70,166 +74,173 @@
 (define setref!
   (lambda (ref val)
 	(set! global-store
-	  (letrec ((setref-inner
+	  (if (integer? ref)
+		(letrec ((setref-inner
 				 (lambda (store1 ref1)
 				   (cond
 					 ((null? store1) (error 'setref! "Referencia inválida ref: ~a en ~a" ref global-store))
-					 ((zero? ref1) (cons val (cdr global-store)))
+					 ((zero? ref1) (cons val (cdr store1)))
 					 (else (cons (car store1) (setref-inner (cdr store1)
 															(- ref1 1))))))))
-			   (setref-inner global-store ref)))))
+			   (setref-inner global-store ref))
+		(error 'setref! "ref no está bien ~a" ref)))))
 
-(define (interp-const-exp exp1 env)
+(define (interp-v-const-exp exp1 env)
 	(int-val (const-exp-n exp1)))
 
-(define (interp-zero?-exp exp1 env)
-	(let ((val (interp-exp (zero?-exp-exp1 exp1) env)))
+(define (interp-v-zero?-exp exp1 env)
+	(let ((val (interp-v-exp (zero?-exp-exp1 exp1) env)))
 	  (if (int-val? val) 
 		(bool-val (zero? (int-val-n val)))
-		(error 'interp "exp1 no es un número ~a" val))))
+		(error 'interp-v "exp1 no es un número ~a" val))))
 
-(define (interp-diff-exp exp1 env)
-	(let ((val1 (interp-exp (diff-exp-exp1 exp1) env)) 
-		  (val2 (interp-exp (diff-exp-exp2 exp1) env)))
+(define (interp-v-diff-exp exp1 env)
+	(let ((val1 (interp-v-exp (diff-exp-exp1 exp1) env)) 
+		  (val2 (interp-v-exp (diff-exp-exp2 exp1) env)))
 	  (if (and (int-val? val1) (int-val? val2))
 		(int-val (- (int-val-n val1) (int-val-n val2)))
-		(error 'interp "los argumentos no son numéricos ~a, ~a" val1 val2))))
+		(error 'interp-v "los argumentos no son numéricos ~a, ~a" val1 val2))))
 
-(define (interp-if-exp exp1 env)
-  (let ((val1 (interp-exp (if-exp-exp1 exp1) env)))
+(define (interp-v-if-exp exp1 env)
+  (let ((val1 (interp-v-exp (if-exp-exp1 exp1) env)))
 	(if (bool-val? val1)
 	  (if (bool-val-b val1) 
-		(interp-exp (if-exp-exp2 exp1) env)
-		(interp-exp (if-exp-exp3 exp1) env))
-	  (error 'interp "el primero argumento no es bool ~a" val1))))
+		(interp-v-exp (if-exp-exp2 exp1) env)
+		(interp-v-exp (if-exp-exp3 exp1) env))
+	  (error 'interp-v "el primero argumento no es bool ~a" val1))))
 
-(define (interp-var-exp exp1 env)
+(define (interp-v-var-exp exp1 env)
   (let ((reference (lookup-id (var-exp-var exp1) env)))
 	(deref reference)))
 
-(define (interp-let-exp exp1 env)
-  (let ((ref (newref (interp-exp (let-exp-exp1 exp1) env)))
+(define (interp-v-let-exp exp1 env)
+  (let* ((ref (newref (interp-v-exp (let-exp-exp1 exp1) env)))
 		(new-env (extend-env (let-exp-var exp1) ref env)))
-	(interp-exp (let-exp-body exp1) new-env)))
+	(interp-v-exp (let-exp-body exp1) new-env)))
 
-(define (interp-letrec-exp exp1 env)
-  (let* ((proc-ref (newref (int-val 0))) 
+(define (interp-v-letrec-exp exp1 env)
+  (let* ((proc-ref (newref (int-val 1))) 
 		 (new-env (extend-env (letrec-exp-p-name exp1) proc-ref env)))
 	(setref! proc-ref (proc-val (letrec-exp-b-var exp1)
 								(letrec-exp-p-body exp1)
 								new-env))
-	(interp-exp (letrec-exp-letrec-body exp1) new-env)))
+	;(displayln new-env)
+	;(displayln (get-store))
+	;(displayln (deref (lookup-id (letrec-exp-p-name exp1) new-env)))
+	(interp-v-exp (letrec-exp-letrec-body exp1) new-env)))
 
-(define (interp-set-exp exp1 env)
+(define (interp-v-set-exp exp1 env)
   (let ((var-ref (lookup-id (set-exp-var exp1) env))
-		(new-val (interp-exp (set-exp-exp1 exp1) env)))
+		(new-val (interp-v-exp (set-exp-exp1 exp1) env)))
+	;(printf "Store en set-exp: ~a\n" (get-store))
 	(setref! var-ref new-val)))
+	;(printf "Store despues de set-exp: ~a\n" (get-store))))
 
-(define (interp-call-exp exp1 env)
-  (let ((val1 (interp-exp (call-exp-exp1 exp1) env))
-		(val2 (interp-exp (call-exp-exp2 exp1) env)))
+(define (interp-v-call-exp exp1 env)
+  (let ((val1 (interp-v-exp (call-exp-exp1 exp1) env))
+		(val2 (interp-v-exp (call-exp-exp2 exp1) env)))
 	(if (proc-val? val1)
 	  (let ((proc-body (proc-val-body val1))
 			(proc-env (extend-env (proc-val-id val1)
 								  (newref val2)
 								  (proc-val-env val1))))
-		(interp-exp proc-body proc-env))
-	  (error 'interp "Primer argumento no es función ~a" val1))))
+		(interp-v-exp proc-body proc-env))
+	  (error 'interp-v "Primer argumento no es función ~a \n ~a \n\n ~a \n ambiente: ~a \n store: ~a" 
+			 (call-exp-exp1 exp1)
+			 val1
+			 exp1
+			 env
+			 (get-store)))))
 
-(define (interp-exp exp1 env)
+(define (interp-v-proc-exp exp1 env)
+  (proc-val (proc-exp-b-var exp1)
+			(proc-exp-p-body exp1)
+			env))
+
+(define (interp-v-seq-exp exp1 env)
+  (let ((explist (seq-exp-explist exp1)))
+	(if (empty? explist)
+	  (error 'interp-v "seq-exp vacío")
+  	  (if (empty? (cdr explist))
+		(interp-v-exp (car explist) env)
+		(let ((first-exp (car explist)))
+		  (interp-v-exp first-exp env)
+  		  (interp-v-exp (seq-exp (cdr explist)) env))))))
+
+(define (interp-v-exp exp1 env)
   (cond
-    ([const-exp? exp1] (interp-const-exp exp1 env))
-    ([zero?-exp? exp1] (interp-zero?-exp exp1 env))
-    ([diff-exp? exp1] (interp-diff-exp exp1 env))
-    ([if-exp? exp1] (interp-if-exp exp1 env))
-    ([var-exp? exp1] (interp-var-exp exp1 env))
-    ([let-exp? exp1] (interp-let-exp exp1 env))
-    ([letrec-exp? exp1] (interp-letrec-exp exp1 env))
-    ([set-exp? exp1] (interp-set-exp exp1 env))
-    ([call-exp? exp1] (interp-call-exp exp1 env))))
+    ([const-exp? exp1] (interp-v-const-exp exp1 env))
+    ([zero?-exp? exp1] (interp-v-zero?-exp exp1 env))
+    ([diff-exp? exp1] (interp-v-diff-exp exp1 env))
+    ([if-exp? exp1] (interp-v-if-exp exp1 env))
+    ([var-exp? exp1] (interp-v-var-exp exp1 env))
+    ([let-exp? exp1] (interp-v-let-exp exp1 env))
+    ([letrec-exp? exp1] (interp-v-letrec-exp exp1 env))
+    ([set-exp? exp1] (interp-v-set-exp exp1 env))
+    ([call-exp? exp1] (interp-v-call-exp exp1 env))
+	([proc-exp? exp1] (interp-v-proc-exp exp1 env))
+	([seq-exp? exp1] (interp-v-seq-exp exp1 env))
+	(else (error 'interp-v-exp "Estructura indefinida ~a" exp1))))
 
-(define (interp-assign-st stmnt env)
-  (let ((assign (interp-exp (set-exp (assign-st-var stmnt) (assign-st-exp1 stmnt)) env)))
+(define (interp-v-assign-st stmnt env)
+  (let ((assign (interp-v-exp (set-exp (assign-st-var stmnt) (assign-st-exp1 stmnt)) env)))
 	(void)))
 
-(define (interp-print-st stmnt env)
-  (displayln (interp-exp (print-st-exp1 stmnt) env)))
+(define (interp-v-print-st stmnt env)
+  (displayln (interp-v-exp (print-st-exp1 stmnt) env)))
 
-(define (interp-seq-st stmnt env)
+(define (interp-v-seq-st stmnt env)
   (let ((stmnt-list (seq-st-stmntlist stmnt)))
 	(if (empty? stmnt-list)
-	  (error 'interp "seq-st vacío")
+	  (error 'interp-v "seq-st vacío")
   	  (if (empty? (cdr stmnt-list))
-		(interp-stmnt (car stmnt-list) env)
+		(interp-v-stmnt (car stmnt-list) env)
 		(let ((first-stmnt (car stmnt-list)))
-		  (interp-stmnt first-stmnt env)
-  		  (interp-stmnt (seq-st (cdr stmnt-list)) env))))))
+		  (interp-v-stmnt first-stmnt env)
+  		  (interp-v-stmnt (seq-st (cdr stmnt-list)) env))))))
 
-(define (interp-if-st stmnt env)
-  (let ((val1 (interp-exp (if-st-exp1 stmnt) env)))
+(define (interp-v-if-st stmnt env)
+  (let ((val1 (interp-v-exp (if-st-exp1 stmnt) env)))
 	(if (bool-val? val1)
 	  (if (bool-val-b val1)
-		(interp-stmnt (if-st-stmnt1 stmnt) env)
-		(interp-stmnt (if-st-stmnt2 stmnt) env))
-	  (error 'interp "first argument in if is not bool ~a" val1))))
+		(interp-v-stmnt (if-st-stmnt1 stmnt) env)
+		(interp-v-stmnt (if-st-stmnt2 stmnt) env))
+	  (error 'interp-v "first argument in if is not bool ~a" val1))))
 
-(define (interp-while-st stmnt env)
-  (let ((val1 (interp-exp (while-st-exp1 stmnt) env)))
+(define (interp-v-while-st stmnt env)
+  (let ((val1 (interp-v-exp (while-st-exp1 stmnt) env)))
 	(if (bool-val? val1)
 	  (if (bool-val-b val1)
-		(interp-stmnt (while-st-stmnt1 stmnt) env)
+		(interp-v-stmnt (while-st-stmnt1 stmnt) env)
 		(void))
-	  (error 'interp "first argument in while is not bool ~a" val1))))
+	  (error 'interp-v "first argument in while is not bool ~a" val1))))
 
-(define (interp-var-st stmnt env)
+(define (interp-v-var-st stmnt env)
   (let ((new-env (extend-env
 				   (if (empty? (var-st-idlist stmnt))
-					 (error 'interp "var-st con idlist vacía")
+					 (error 'interp-v "var-st con idlist vacía")
 					 (first (var-st-idlist stmnt)))
 				   (newref 'uninitialized)
 				   env)))
 	(if (empty? (cdr (var-st-idlist stmnt)))
-	  (interp-stmnt (var-st-stmnt1 stmnt) new-env)
-	  (interp-stmnt (var-st (cdr (var-st-idlist stmnt)) 
+	  (interp-v-stmnt (var-st-stmnt1 stmnt) new-env)
+	  (interp-v-stmnt (var-st (cdr (var-st-idlist stmnt)) 
 							(var-st-stmnt1 stmnt)) 
 					new-env))))
 
-(define (interp-stmnt stmnt env)
+(define (interp-v-stmnt stmnt env)
   (cond
-    ([assign-st? stmnt] (interp-assign-st stmnt env))
-    ([print-st? stmnt] (interp-print-st stmnt env))
-    ([seq-st? stmnt] (interp-seq-st stmnt env))
-    ([if-st? stmnt] (interp-if-st stmnt env))
-    ([while-st? stmnt] (interp-while-st stmnt env))
-    ([var-st? stmnt] (interp-var-st stmnt env))
-    (else (error 'interp "estructura indefinida ~a" stmnt))))
+    ([assign-st? stmnt] (interp-v-assign-st stmnt env))
+    ([print-st? stmnt] (interp-v-print-st stmnt env))
+    ([seq-st? stmnt] (interp-v-seq-st stmnt env))
+    ([if-st? stmnt] (interp-v-if-st stmnt env))
+    ([while-st? stmnt] (interp-v-while-st stmnt env))
+    ([var-st? stmnt] (interp-v-var-st stmnt env))
+    (else (error 'interp-v-stmnt "estructura indefinida ~a" stmnt))))
 
-(define (interp program)
+(define (interp-v program)
   (init-store!)
-  (interp-stmnt (a-program-stmnt program) empty-env))
+  (interp-v-stmnt (a-program-stmnt program) empty-env))
 
-;; Simple test of the extension of the language.
-
-(interp (a-program (var-st (list 'x 'z) 
-						   (seq-st (list
-									 (assign-st 'x (const-exp 10))
-									 (assign-st 'z
-												(letrec-exp 'f 'y
-													(if-exp
-													  (zero?-exp (var-exp 'y))
-													  (const-exp 0)
-													  (diff-exp 
-														(var-exp 'y)
-														(diff-exp
-														  (const-exp 0)
-														  (call-exp 
-															(var-exp 'f)
-															(diff-exp
-															(var-exp 'y)
-															(const-exp 1))))))
-													(call-exp
-													  (var-exp 'f)
-													  (var-exp 'x))))
-									 (print-st (var-exp 'z)))))))
-
+(provide (all-defined-out))
 

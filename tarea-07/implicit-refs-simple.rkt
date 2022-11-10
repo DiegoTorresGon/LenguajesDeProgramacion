@@ -99,7 +99,7 @@
 	(deref reference)))
 
 (define (interp-let-exp exp1 env)
-  (let ((ref (newref (interp-exp (let-exp-exp1 exp1) env)))
+  (let* ((ref (newref (interp-exp (let-exp-exp1 exp1) env)))
 		(new-env (extend-env (let-exp-var exp1) ref env)))
 	(interp-exp (let-exp-body exp1) new-env)))
 
