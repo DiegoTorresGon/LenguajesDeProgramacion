@@ -15,7 +15,7 @@
 (require racket/function
          racket/port
 
-         "../reg/reg.rkt")
+         "./reg/reg.rkt")
 
 (struct lex-rule (set action)
   #:transparent
@@ -125,4 +125,4 @@
 (provide (struct-out pos)
          lex-rule
          make-lexer
-         (all-from-out "../reg/reg.rkt"))
+         (all-from-out "./reg/reg.rkt"))
